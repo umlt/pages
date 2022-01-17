@@ -1,0 +1,27 @@
+* {
+  color: rgb(35, 38, 41);
+}
+
+a {
+  color: rgb(86, 156, 210);
+}
+
+code {
+  color: rgb(35, 38, 41);
+  background-color: rgb(227, 230, 232);
+  border: 0.25em solid rgb(227, 230, 232);
+  border-radius: 3px;
+}
+
+pre {
+  color: rgb(47, 51, 55);
+  background-color: rgb(246, 246, 246);
+  border: 0.5em solid rgb(246, 246, 246);
+  border-radius: 3px;
+}
+
+pre > code {
+  color: inherit;
+  background-color: inherit;
+  border: none;
+}
