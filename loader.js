@@ -6,11 +6,11 @@ const PAGE_URL = new URL(`${PAGE_SRC}/`, window.location)
  * template literals, and compiles to regex.
  *
  * Usage: <pre>
- * const string = 't(o)mato!'
+ * const string = 'he(l)lo!'
  * let compiled = RegTemp `${string}`
  *
  * // equivalent to
- * let compiled = new RegExp('/to\\(o\\)mato\\!/')
+ * let compiled = new RegExp('/he\\(l\\)lo\\!/')
  * </pre>
  *
  * @param {string} Template literal
@@ -30,7 +30,6 @@ function RegTemp(strings, ...vars) {
  * @param {string} A url string
  * @return boolean whether the URL shares the same origin
  */
-
 function isLocalURL(url) {
   return new URL(url).origin === window.location.origin
 }
@@ -78,6 +77,7 @@ function showDocument(container, text) {
   const dom = new DOMParser()
   const doc = dom.parseFromString(mdText, 'text/html')
 
+  // Set title of document to first child text
   document.title = doc.body.firstChild.innerText
 
   // Empty container then append parsed elements
