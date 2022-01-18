@@ -25,3 +25,11 @@ pre > code {
   background-color: inherit;
   border: none;
 }
+
+blockquote {
+  color: rgb(82, 89, 96);
+  border-left: solid rgb(200, 204, 208) 0.4em;
+  padding: 0.25em;
+  padding-left: 1em;
+  margin-left: 1em;
+}
