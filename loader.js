@@ -1,5 +1,5 @@
-const PAGE_SRC = './page_src'
-const QUERY_STR = '#md-container'
+const PAGE_SRC = 'page_src'
+const PAGE_URL = new URL(`${PAGE_SRC}/`, window.location)
 
 /**
  * Regex Template, automatically escapes
@@ -25,69 +25,97 @@ function RegTemp(strings, ...vars) {
 }
 
 /**
- * Hash Relative Markdown links, traverses
- * an element, and checks if it contains a
- * relative link ending with '.md', and
- * converts it to a hash link.
+ * Check if URL shares the same origin as the window
+ *
+ * @param {string} A url string
+ * @return boolean whether the URL shares the same origin
+ */
+
+function isLocalURL(url) {
+  return new URL(url).origin === window.location.origin
+}
+
+/**
+ * Fix Relative links, traverses an element
+ * and converts image links to direct links
+ * and markdown links to hash links
  *
  * e.g <pre>
  * const a = document.createElement('A')
  * a.href = 'test.md'
  * hashRelLink(a)
- * a.href === '#test'
+ * a.href === '#test.md'
  * </pre>
  *
  * @param {Element} Element to traverse
  */
-function hashRelMDLinks(element) {
+function fixRelLinks(element) {
+  const hashDir = window.location.hash.substring(1).replace(/([^\/#]*?$)/, '')
+
   if (element.tagName === 'A') {
-    // Get current page path & build required regex
-    const path = window.location.href.replace(/\/([^\/]*?$)/, '')
-    const pathRegex = RegTemp `${path}\/(.*).md(?:#.*)?`
-
-    // Check if link is relative `.md` file.
-    const match = element.href.match(pathRegex)
-
-    if (match) {
-      element.href = '#' + match[1]
+    const hrefMatch = element.outerHTML.match(/href=\"(.*?).md\"/)
+    if (hrefMatch && isLocalURL(element.href)) {
+      const absURL = new URL('./' + hashDir + hrefMatch[1], PAGE_URL)
+      const target = absURL.pathname.substring(PAGE_URL.pathname.length)
+      element.href = `#${target}.md`
+    }
+  } else if (element.src) {
+    const srcMatch = element.outerHTML.match(/src=\"(.*?)\"/)
+    if (srcMatch && isLocalURL(element.src)) {
+      const src = new URL(hashDir + srcMatch[1], PAGE_URL)
+      element.src = src
     }
   } else {
     // Recurse through children elements
     for (const child of element.children) {
-      hashRelMDLinks(child)
+      fixRelLinks(child)
     }
   }
 }
 
+function showDocument(container, text) {
+  const mdText = katexit.render(text)
+  const dom = new DOMParser()
+  const doc = dom.parseFromString(mdText, 'text/html')
+
+  document.title = doc.body.firstChild.innerText
+
+  // Empty container then append parsed elements
+  container.innerHTML = ''
+  for (let child of doc.body.childNodes) {
+    container.appendChild(child)
+  }
+
+  // Convert relative markdown links to hash links
+  fixRelLinks(container)
+}
+
+function showError(container, errorMessage) {
+  document.title = errorMessage
+  container.innerHTML = `<center>${errorMessage}</center>`
+}
+
 // Loader script
-window.onload = window.onhashchange = function() {
-  const hash = window.location.hash
-  const target = hash ? hash.substring(1) : 'index'
-  const container = document.querySelector(QUERY_STR)
+function initLoader(queryStr) {
+  window.onload = window.onhashchange = function() {
+    const hash = window.location.hash
+    const target = hash ? hash.substring(1) : 'index.md'
+    const absURL = new URL('./' + target, PAGE_URL)
+    const container = document.querySelector(queryStr)
 
-  fetch(`${PAGE_SRC}/${target}.md`)
-    .then(res => {
-      if (res.ok) {
-        return res.text()
-      } else {
-        const errorTitle = `${res.status} ${res.statusText}`
-        return `<center>${errorTitle}</center>`
-      }
-    })
-    .then(text => {
-      const mdText = katexit.render(text)
-      const dom = new DOMParser()
-      const doc = dom.parseFromString(mdText, 'text/html')
+    // Check if path is outside of PAGE_SRC
+    if (absURL.pathname.substring(0, PAGE_URL.pathname.length) !== PAGE_URL.pathname) {
+      showError(container, 'Path not in source directory')
+      return
+    }
 
-      document.title = doc.body.firstChild.innerText
-
-      // Empty container then append parsed elements
-      container.innerHTML = ''
-      for (let child of doc.body.childNodes) {
-        container.appendChild(child)
-      }
-
-      // Convert relative markdown links to hash links
-      hashRelMDLinks(container)
-    })
+    fetch(absURL)
+      .then(res => {
+        if (res.ok) {
+          return res.text().then(text => showDocument(container, text))
+        } else {
+          return showError(container, `${res.status} ${res.statusText}`)
+        }
+      })
+  }
 }
